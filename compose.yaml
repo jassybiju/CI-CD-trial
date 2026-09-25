@@ -1,0 +1,61 @@
+  services:
+    users-mongo:
+      image: mongo:7
+      environment:
+        MONGO_INITDB_DATABASE: users
+      volumes:
+        - users-mongo-data:/data/db
+      healthcheck:
+        test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok", "localhost:27017/users"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
+
+    posts-mongo:
+      image: mongo:7
+      environment:
+        MONGO_INITDB_DATABASE: posts
+      volumes:
+        - posts-mongo-data:/data/db
+      healthcheck:
+        test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok", "localhost:27017/posts"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
+
+    users:
+      build: 
+        context: ./users
+      command: sh -c "npm install && npm run dev"
+      ports:
+        - "3001:3001"
+      volumes:
+        - ./users:/app
+        - users-node-modules:/app/node_modules
+      environment:
+        MONGO_URL: mongodb://users-mongo:27017/users
+        JWT_SECRET: change-this-before-production
+      depends_on:
+        users-mongo:
+          condition: service_healthy
+
+    posts:
+      build:
+        context: ./posts
+      command: sh -c "npm install && npm run dev"
+      ports:
+        - "3002:3002"
+      volumes:
+        - ./posts:/app
+        - posts-node-modules:/app/node_modules
+      environment:
+        MONGO_URL: mongodb://posts-mongo:27017/posts
+      depends_on:
+        posts-mongo:
+          condition: service_healthy
+
+  volumes:
+    users-mongo-data:
+    posts-mongo-data:
+    users-node-modules:
+    posts-node-modules:
